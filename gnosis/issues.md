@@ -22,3 +22,9 @@ Thus, it is required to re-verify the bytecode once the compiler version is upda
 
 In the current bytecode, it checks the existence of the return value using `returndatasize`:
 https://github.com/runtimeverification/verified-smart-contracts/blob/master/gnosis/generated/GnosisSafe.evm#L9704-L9721
+
+### Memory copy
+
+In `checkSignatures`, the argument `signatures` is first loaded into the local memory from the call data (not into the stack). Then, when it calls `isValidSignature`, it performs the memory-to-memory copy to prepare for the `contractSignature` argument (part of the `signatures` bytes).  Now, it is required in the bytecode that these two memory regions do not overlap.  Otherwise the memory-to-memory copy is not sound.
+
+It also depends on the compiler version.
