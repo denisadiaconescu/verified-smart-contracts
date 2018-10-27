@@ -7,6 +7,8 @@ Thus, the validity of the remaining signatures does not matter.
 Also, the sortedness of the whole signatures is not required, as long as the first `threshold` number of signatures are locally sorted.
 However, we have not found an attack exploiting this.
 
+On the other hand, when `signatures` contains `threshold` number of valid signatures, but the first few signatures are not valid, `checkSignatures` fails. Is it intended?
+
 ### Exceptional behavior of `isValidSignature`
 
 For the following code:
