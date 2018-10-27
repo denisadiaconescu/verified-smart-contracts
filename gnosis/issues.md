@@ -7,7 +7,9 @@ Thus, the validity of the remaining signatures does not matter.
 Also, the sortedness of the whole signatures is not required, as long as the first `threshold` number of signatures are locally sorted.
 However, we have not found an attack exploiting this.
 
-On the other hand, when `signatures` contains `threshold` number of valid signatures, but the first few signatures are not valid, `checkSignatures` fails. Is it intended?
+Another questionable behavior is in the case where there are `threshold` valid signatures in total, but some of them at the beginning are invalid. Currently, `checkSignatures` fails in this case.
+A potential issue for this behavior is that a *bad* owner intentionally sends an invalid signature to *veto* the transaction. He can *always* veto if his address is the first (the smallest) among the owners. On the other hand, a *good* owner is hard to veto some bad transaction if his address is the last (the lartest) among the owners.
+Is this intended?
 
 ### Exceptional behavior of `isValidSignature`
 
