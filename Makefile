@@ -4,12 +4,17 @@
 specs_dir:=specs
 build_dir:=.build
 
-.PHONY: all clean kevm clean-kevm
+K_VERSION   :=$(shell cat ${build_dir}/.k.rev)
+KEVM_VERSION:=$(shell cat ${build_dir}/.kevm.rev)
+
+.PHONY: all all-dev clean k kevm clean-kevm
 
 all: k-files split-proof-tests
 
+all-dev: all split-proof-tests-dev
+
 clean:
-	rm -rf $(specs_dir) $(build_dir)
+	rm -rf $(specs_dir) $(build_dir)/*
 
 pandoc_tangle_submodule:=$(build_dir)/pandoc-tangle
 TANGLER:=$(pandoc_tangle_submodule)/tangle.lua
@@ -19,14 +24,26 @@ export LUA_PATH
 $(TANGLER):
 	git submodule update --init -- $(pandoc_tangle_submodule)
 
+k_repo:=https://github.com/kframework/k
+k_repo_dir:=$(build_dir)/k
+k_bin:=$(shell pwd)/$(k_repo_dir)/k-distribution/target/release/k/bin
+
+k:
+	git clone $(k_repo) $(k_repo_dir)
+	cd $(k_repo_dir) \
+		&& git reset --hard $(K_VERSION) \
+		&& mvn package -DskipTests
+
 kevm_repo:=https://github.com/kframework/evm-semantics
 kevm_repo_dir:=$(build_dir)/evm-semantics
 
 kevm:
-	git submodule update --init -- $(kevm_repo_dir)
+	git clone $(kevm_repo) $(kevm_repo_dir)
 	cd $(kevm_repo_dir) \
-		&& make repo-deps \
-		&& make build-java
+		&& git reset --hard $(KEVM_VERSION) \
+		&& make tangle-deps \
+		&& make defn \
+		&& $(k_bin)/kompile -v --debug --backend java -I .build/java -d .build/java --main-module ETHEREUM-SIMULATION --syntax-module ETHEREUM-SIMULATION .build/java/driver.k
 
 
 # Definition Files
@@ -178,7 +195,12 @@ casper_files:=recommended_source_epoch-spec.k \
               collective_reward-failure-spec.k
 
 gnosis_files:=encodeTransactionData-data32-spec.k \
-              encodeTransactionData-data33-spec.k
+              encodeTransactionData-data33-spec.k \
+              checkSignatures-threshold-0-spec.k \
+              checkSignatures-threshold-too-large-spec.k \
+              checkSignatures-threshold-1-sigv-2-empty-spec.k \
+              checkSignatures-threshold-1-sigv-2-ne-success-spec.k \
+              checkSignatures-threshold-1-sigv-2-ne-notOwner-spec.k
 
 # FIXME: restore the skipped specs
 #             setupSafe-spec.k
@@ -196,14 +218,20 @@ gnosis_test_files:=testKeccak-data1-spec.k \
                    testAbiEncodePacked-spec.k \
                    testSignatureSplit-pos0-spec.k \
                    testSignatureSplit-pos1-spec.k \
-                   testSignatureSplit-pos2-spec.k
+                   testSignatureSplit-pos2-spec.k \
+                   testEcrecover-non-empty-spec.k \
+                   testEcrecover-empty-spec.k
 
-proof_tests:=bihu vyper-erc20 zeppelin-erc20 hkg-erc20 hobby-erc20 sum-to-n ds-token-erc20 gnosis
+proof_tests:=sum-to-n vyper-erc20 zeppelin-erc20
+
+proof_tests_dev:=$(proof_tests) bihu hkg-erc20 hobby-erc20 ds-token-erc20 gnosis gnosis-test
 
 # FIXME: restore the casper specs
-#proof_tests += casper
+#proof_tests_dev += casper
 
 split-proof-tests: $(proof_tests)
+
+split-proof-tests-dev: $(proof_tests_dev)
 
 bihu: $(patsubst %, $(specs_dir)/bihu/%, $(bihu_collectToken_file)) $(patsubst %, $(specs_dir)/bihu/%, $(bihu_forwardToHotWallet_files)) $(specs_dir)/lemmas.k
 
@@ -223,7 +251,7 @@ casper: $(patsubst %, $(specs_dir)/casper/%, $(casper_files)) $(specs_dir)/lemma
 
 gnosis: $(patsubst %, $(specs_dir)/gnosis/%, $(gnosis_files)) $(specs_dir)/lemmas.k
 
-gnosis-test: $(specs_dir)/lemmas.k $(patsubst %, $(specs_dir)/gnosis/test/%, $(gnosis_test_files))
+gnosis-test: $(patsubst %, $(specs_dir)/gnosis-test/%, $(gnosis_test_files)) $(specs_dir)/lemmas.k
 
 # Bihu
 bihu_tmpls:=bihu/module-tmpl.k bihu/spec-tmpl.k
@@ -359,25 +387,24 @@ $(specs_dir)/gnosis/execTransactionAndPaySubmitter-example-spec.k: $(gnosis_tmpl
 	python3 resources/gen-spec.py $^ execTransactionAndPaySubmitter-example checkHash execTransactionAndPaySubmitter-example > $@
 
 # Gnosis Test
-gnosis_tmpls:=gnosis/module-tmpl.k gnosis/spec-tmpl.k
+gnosis_test_tmpls:=gnosis/module-tmpl.k gnosis/spec-tmpl.k
 
- $(specs_dir)/gnosis/test/%-spec.k: $(gnosis_tmpls) gnosis/test/api-test.ini
+ $(specs_dir)/gnosis-test/%-spec.k: $(gnosis_test_tmpls) gnosis/test/api-test.ini
 	@echo >&2 "==  gen-spec: $@"
 	mkdir -p $(dir $@)
 	python3 resources/gen-spec.py $^ $* $* > $@
 	cp gnosis/abstract-semantics.k $(dir $@)
 	cp gnosis/verification.k $(dir $@)
-	cp $(dir $@)/../../lemmas.k $(dir $@)/..
 
 
 # Testing
 # -------
 
-TEST:=$(kevm_repo_dir)/kevm prove
+TEST:=$(k_bin)/kprove -v -d $(kevm_repo_dir)/.build/java -m VERIFICATION --z3-executable --z3-impl-timeout 500
 
 test_files:=$(wildcard specs/*/*-spec.k)
 
 test: $(test_files:=.test)
 
 specs/%-spec.k.test: specs/%-spec.k
-	$(TEST) $< --z3-impl-timeout 500 --verbose
+	$(TEST) $<

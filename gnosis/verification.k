@@ -1,7 +1,8 @@
-requires "edsl.k"
+requires "evm-symbolic.k"
 requires "../lemmas.k"
 
 module VERIFICATION
+    imports EVM-SYMBOLIC
     imports EDSL
     imports LEMMAS
 
@@ -71,24 +72,60 @@ module VERIFICATION
 
 
 // Reading symbolic WordStack from memory, then extracting bytes from it. General case (stack size can be != 32)
-//========================================================================
-    rule nthbyteof(chop(#asWord(W : WS) &Int MASK), I       , N       )
-      => nthbyteof(chop(#asWord(    WS) &Int MASK), I -Int 1, N -Int 1)
-      requires I >Int 0 andBool #sizeWordStack(W : WS) <=Int 32
+    //decoding nthbyteof(#asWord())
+    rule nthbyteof(#asWord(W : WS), I       , N       )
+      => nthbyteof(#asWord(    WS), I -Int 1, N -Int 1)
+      requires 0 <Int I andBool I <Int N andBool N <=Int 32 andBool N ==Int #sizeWordStack(W : WS)
 
-    rule nthbyteof(chop(#asWord(W : WS) &Int MASK), 0, N) => W &Int (MASK >>Byte #sizeWordStack(WS))
-      requires #sizeWordStack(W : WS) <=Int 32
+    rule nthbyteof(#asWord(W : WS), 0, N) => W
+      requires N <=Int 32 andBool N ==Int #sizeWordStack(W : WS)
+
+    //decoding nthbyteof(#asWord() &Int MASK)
+    rule nthbyteof(#asWord(W : WS) &Int MASK, I       , N       )
+      => nthbyteof(#asWord(    WS) &Int MASK, I -Int 1, N -Int 1)
+      requires 0 <Int I andBool I <Int N andBool N <=Int 32 andBool N ==Int #sizeWordStack(W : WS)
+
+    rule nthbyteof(#asWord(W : WS) &Int MASK, 0, N) => W &Int (MASK >>Byte #sizeWordStack(WS))
+      requires N <=Int 32 andBool N ==Int #sizeWordStack(W : WS)
+
+    //decoding nthbyteof() &Int MASK
+    rule MASK &Int nthbyteof(WS, I, N) => nthbyteof(WS, I, N) &Int MASK
+      requires #isConcrete(MASK)
+
+    rule nthbyteof(_, _, _)  &Int (MASK => MASK &Int 255)
+      requires #isConcrete(MASK) andBool MASK >Int 255
 
     rule nthbyteof(WS, I, N) &Int 255 => nthbyteof(WS, I, N)
 
-    rule nthbyteof(chop(MASK &Int #asWord(WS)) => chop(#asWord(WS) &Int MASK), _, _)
+    //decoding #asWord() &Int MASK
+    rule MASK &Int #asWord(WS) => #asWord(WS) &Int MASK
       requires #isConcrete(MASK)
       //version below doesn't work
       //requires notBool (getKLabel(MASK) ==K #klabel(`#asWord`))
 
+    //#asWord(...) & 255 is the last byte.
+    rule #asWord( X : Y : WS => Y : WS ) &Int 255
+    rule #asWord( X : .WordStack       ) &Int 255 => X
 
-    syntax WordStack ::= #encSig (Int, Int, Int) [function]
+    // #asWord only keeps 32 bytes and chops the rest.
+    rule #asWord(W : WS => WS)
+      requires #sizeWordStack(W : WS) >Int 32
+
+
+    syntax WordStack ::= #bytesSegment (Int, Int, Int, Int) [function] //DATA, START, RANGE_LEN, DATA_LEN
  // ===============================================================
-    rule #encSig(SIG_R, SIG_S, SIG_V) => #enc(#bytes32(SIG_R)) ++ #enc(#bytes32(SIG_S)) ++ #getValue(#uint8(SIG_V)) : .WordStack
+    rule #bytesSegment(DATA, START, LEN, N)
+         => nthbyteof(DATA, START, N) : #bytesSegment(DATA, START +Int 1, LEN -Int 1, N)
+      requires #range ( 0 <= START < N ) andBool #range( 1 <= START +Int LEN <= N ) andBool LEN >Int 0
+
+    rule #bytesSegment(_, _, 0, _) => .WordStack
+
+// Range for #symEcrec
+//========================================================================
+    //case 0 is never wrapped into #symEcrec(), corresponds to #ecrecEmpty(DATA) == true
+    rule 0 <Int   #symEcrec(DATA)             => true
+
+    //that's because the result in concrete semantics is trimmed to Address range.
+    rule          #symEcrec(DATA) <Int pow160 => true
 
 endmodule

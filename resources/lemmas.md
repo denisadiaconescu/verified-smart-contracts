@@ -35,9 +35,6 @@ The following lemmas are used for symbolic reasoning about `MLOAD` and `MSTORE` 
 They capture the essential mechanisms used by the two instructions: splitting a word into the byte-array and merging it back to the word.
 
 ```k
-    rule 0 <=Int nthbyteof(V, I, N)          => true
-    rule         nthbyteof(V, I, N) <Int 256 => true
-
     rule #asWord( nthbyteof(V,  0, 32)
                 : nthbyteof(V,  1, 32)
                 : nthbyteof(V,  2, 32)
@@ -72,6 +69,10 @@ They capture the essential mechanisms used by the two instructions: splitting a 
                 : nthbyteof(V, 31, 32)
                 : .WordStack ) => V
       requires 0 <=Int V andBool V <Int pow256
+      
+    rule #asWord( 0 : W1 : WS  =>  W1 : WS )
+      
+    rule nthbyteof(N, 0, 1) => N
 ```
 
 Another type of byte-array manipulating operation is used to extract the function signature from the call data.
@@ -85,6 +86,21 @@ The following lemmas essentially capture the signature extraction mechanisms.
 It reduces the reasoning efforts of the underlying theorem prover, factoring out the essence of the byte-twiddling operations.
 
 ```k
+    syntax Bool ::= #isRegularWordStack ( WordStack ) [function]
+ // -------------------------------------------------------
+    rule #isRegularWordStack(N : WS => WS)
+    rule #isRegularWordStack(.WordStack) => true
+
+    //Rules for #padToWidth with regular symbolic arguments.
+    //Same as for concrete #padToWidth, when WordStack is of regular form "A:B ... :.WordStack"
+    //Not clear why KEVM rules for #padToWidth were marked [concrete]. If they were general, rules below would not be necessary.
+    rule #padToWidth(N, WS) => WS
+      requires notBool #sizeWordStack(WS) <Int N andBool #isRegularWordStack(WS) ==K true
+
+    rule #padToWidth(N, WS) => #padToWidth(N, 0 : WS)
+      requires         #sizeWordStack(WS) <Int N andBool #isRegularWordStack(WS) ==K true
+
+    //Rules for #padToWidth with non-regular symbolic arguments.
     rule #padToWidth(32, #asByteStack(V)) => #asByteStackInWidth(V, 32)
       requires 0 <=Int V andBool V <Int pow256
 
@@ -95,6 +111,10 @@ It reduces the reasoning efforts of the underlying theorem prover, factoring out
     // storing a symbolic boolean value in memory
     rule #padToWidth(32, #asByteStack(bool2Word(E)))
       => #asByteStackInWidthAux(0, 30, 32, nthbyteof(bool2Word(E), 31, 32) : .WordStack)
+      
+    //1-byte ByteStack.
+    rule #asByteStack(W) => W : .WordStack
+      requires #rangeUInt(8, W)
 
     // for Solidity
     rule #asWord(WS) /Int D => #asWord(#take(#sizeWordStack(WS) -Int log256Int(D), WS))
@@ -156,13 +176,6 @@ Code sugar to represent byte arrays with concrete size but symbolic data.
     rule keccak(WS) => keccakIntList(byteStack2IntList(WS))
       requires ( notBool #isConcrete(WS) )
        andBool ( #sizeWordStack(WS) ==Int 32 orBool #sizeWordStack(WS) ==Int 64 )
-
-    // inverse of intList2ByteStack of edsl.md
-    syntax IntList ::= byteStack2IntList ( WordStack )       [function]
-                     | byteStack2IntList ( WordStack , Int ) [function]
-    rule byteStack2IntList ( WS ) => byteStack2IntList ( WS , #sizeWordStack(WS) /Int 32 ) requires #sizeWordStack(WS) %Int 32 ==Int 0
-    rule byteStack2IntList ( WS , N ) => #asWord ( WS [ 0 .. 32 ] ) byteStack2IntList ( #drop(32, WS) , N -Int 1 ) requires N >Int 1
-    rule byteStack2IntList ( WS , 1 ) => #asWord ( WS [ 0 .. 32 ] ) .IntList
 ```
 
 ### Integer Expression Simplification Rules
@@ -215,47 +228,20 @@ These rules are specific to reasoning about EVM programs.
                             andBool 0 <=Int N andBool N <=Int MASK
 
 
-    rule #asWord( B1 : B2 : B3 : B4 : B5 : B6 : B7 : B8 : B9 : B10 : B11 : B12 : B13 : B14 : B15 : B16
-                : B17: B18: B19: B20: B21: B22: B23: B24: B25: B26 : B27 : B28 : B29 : B30 : B31 : B32
-                : .WordStack ) &Int 255 => B32
-      requires 0 <=Int B1  andBool B1  <Int 256
-       andBool 0 <=Int B2  andBool B2  <Int 256
-       andBool 0 <=Int B3  andBool B3  <Int 256
-       andBool 0 <=Int B4  andBool B4  <Int 256
-       andBool 0 <=Int B5  andBool B5  <Int 256
-       andBool 0 <=Int B6  andBool B6  <Int 256
-       andBool 0 <=Int B7  andBool B7  <Int 256
-       andBool 0 <=Int B8  andBool B8  <Int 256
-       andBool 0 <=Int B9  andBool B9  <Int 256
-       andBool 0 <=Int B10 andBool B10 <Int 256
-       andBool 0 <=Int B11 andBool B11 <Int 256
-       andBool 0 <=Int B12 andBool B12 <Int 256
-       andBool 0 <=Int B13 andBool B13 <Int 256
-       andBool 0 <=Int B14 andBool B14 <Int 256
-       andBool 0 <=Int B15 andBool B15 <Int 256
-       andBool 0 <=Int B16 andBool B16 <Int 256
-       andBool 0 <=Int B17 andBool B17 <Int 256
-       andBool 0 <=Int B18 andBool B18 <Int 256
-       andBool 0 <=Int B19 andBool B19 <Int 256
-       andBool 0 <=Int B20 andBool B20 <Int 256
-       andBool 0 <=Int B21 andBool B21 <Int 256
-       andBool 0 <=Int B22 andBool B22 <Int 256
-       andBool 0 <=Int B23 andBool B23 <Int 256
-       andBool 0 <=Int B24 andBool B24 <Int 256
-       andBool 0 <=Int B25 andBool B25 <Int 256
-       andBool 0 <=Int B26 andBool B26 <Int 256
-       andBool 0 <=Int B27 andBool B27 <Int 256
-       andBool 0 <=Int B28 andBool B28 <Int 256
-       andBool 0 <=Int B29 andBool B29 <Int 256
-       andBool 0 <=Int B30 andBool B30 <Int 256
-       andBool 0 <=Int B31 andBool B31 <Int 256
-       andBool 0 <=Int B32 andBool B32 <Int 256
-
 
     // for gas calculation
     rule A -Int (#if C #then B1 #else B2 #fi) => #if C #then (A -Int B1) #else (A -Int B2) #fi
     rule (#if C #then B1 #else B2 #fi) -Int A => #if C #then (B1 -Int A) #else (B2 -Int A) #fi
 ```
+
+Operator direction normalization rules. Required to reduce the number of forms of inequalities that can be matched by 
+general lemmas. We chose to keep `<Int` and `<=Int` because those operators are used in all range lemmas and in
+`#range` macros. Operators `>Int` and `>=Int` are still allowed anywhere except rules LHS.
+In all other places they will be matched and rewritten by rules below.
+```k
+    rule X >Int Y => Y <Int X
+    rule X >=Int Y => Y <=Int X
+``` 
 
 ### Boolean
 
@@ -299,6 +285,12 @@ from their concrete semantics.
 Below are the most common such range matching lemmas.
 
 ```k
+    rule 0 <=Int nthbyteof(V, I, N)          => true
+    rule         nthbyteof(V, I, N) <Int 256 => true
+    
+    rule 0 <=Int #asWord(WS)          => true
+    rule #asWord(WS) <Int pow256      => true
+    
     rule 0 <=Int hash1(_)             => true
     rule         hash1(_) <Int pow256 => true
 
@@ -319,12 +311,25 @@ Because lemmas are applied as plain K rewrite rule, they have to match exactly, 
 For example the lemma `rule A < 100 => true` won't match the side condition `requires A <= 99` or 
 `requires 100 > A`.
 To avoid such mismatching situations we need additional expression normalization rules.
-At the moment we have only one, that converts `maxUInt256` to `pow256`.
+First rule below converts `maxUInt256` to `pow256`.
 It allows side conditions that use `maxUInt256` or `#range` macros 
 match the range lemmas above. Note that lemmas above all use `<Int pow256` for the upper range.
+The other rules are similar.
 
 ```k
     rule X <=Int maxUInt256 => X <Int pow256
+    rule X <=Int maxUInt160 => X <Int pow160
+    rule X <=Int 255        => X <Int 256
+    
+    //Range transformation, required for example for chop reduction rules below.
+    rule X <Int pow256 => true
+      requires X <Int 256
+      
+    rule X <Int pow256 => true
+      requires X <Int pow160
+      
+    rule 0 <=Int X => true
+      requires 0 <Int X
 ```
 
 ### `chop` Reduction
@@ -338,7 +343,7 @@ match the range lemmas above. Note that lemmas above all use `<Int pow256` for t
 These lemmas abstract some properties about `#sizeWordStack`:
 
 ```k
-    rule #sizeWordStack ( _ , _ ) >=Int 0 => true [smt-lemma]
+    rule 0 <=Int #sizeWordStack ( _ , _ ) => true [smt-lemma]
     rule #sizeWordStack ( WS , N:Int )
       => #sizeWordStack ( WS , 0 ) +Int N
       requires N =/=K 0
