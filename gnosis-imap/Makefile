@@ -7,8 +7,8 @@ SPEC_GROUP:=gnosis-imap
 SPEC_INI:=gnosis-imap-spec.ini
 
 KPROVE_OPTS:=--smt-prelude $(abspath $(dir $(abspath $(lastword $(MAKEFILE_LIST))))/../gnosis/evm.smt2) \
-             --deterministic-functions --cache-func-optimized
+             --deterministic-functions --cache-func-optimized --log-basic
 
-SPEC_NAMES:=encodeTransactionData
+SPEC_NAMES:=checkSignatures
 
 include ../resources/kprove.mak

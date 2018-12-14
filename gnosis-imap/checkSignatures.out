@@ -1,0 +1,75 @@
+make: Nothing to be done for `all'.
+/Users/denisadiaconescu/rv/verified-smart-contracts/gnosis/.build/k/k-distribution/target/release/k/bin/kprove -v -d /Users/denisadiaconescu/rv/verified-smart-contracts/gnosis/.build/evm-semantics/.build/java -m VERIFICATION --z3-impl-timeout 500 --smt-prelude /Users/denisadiaconescu/rv/verified-smart-contracts/gnosis/evm.smt2 --deterministic-functions --cache-func-optimized  /Users/denisadiaconescu/rv/verified-smart-contracts/specs/gnosis-imap/checkSignatures-spec.k
+Parse command line options                                   = 0.016 s
+Importing: Source(/Users/denisadiaconescu/rv/verified-smart-contracts/specs/gnosis-imap/checkSignatures-spec.k)
+Importing: Source(/Users/denisadiaconescu/rv/verified-smart-contracts/specs/gnosis-imap/checkSignatures-spec.k)
+Importing: Source(/Users/denisadiaconescu/rv/verified-smart-contracts/specs/gnosis-imap/abstract-semantics.k)
+Importing: Source(/Users/denisadiaconescu/rv/verified-smart-contracts/specs/gnosis-imap/verification.k)
+Importing: Source(/Users/denisadiaconescu/rv/verified-smart-contracts/gnosis/.build/evm-semantics/.build/java/evm-symbolic.k)
+Importing: Source(/Users/denisadiaconescu/rv/verified-smart-contracts/gnosis/.build/evm-semantics/.build/java/edsl.k)
+Importing: Source(/Users/denisadiaconescu/rv/verified-smart-contracts/gnosis/.build/evm-semantics/.build/java/evm.k)
+Importing: Source(/Users/denisadiaconescu/rv/verified-smart-contracts/gnosis/.build/evm-semantics/.build/java/data.k)
+Importing: Source(/Users/denisadiaconescu/rv/verified-smart-contracts/gnosis/.build/evm-semantics/.build/java/krypto.k)
+Importing: Source(/Users/denisadiaconescu/rv/verified-smart-contracts/gnosis/.build/evm-semantics/.build/java/network.k)
+Importing: Source(/Users/denisadiaconescu/rv/verified-smart-contracts/specs/lemmas.k)
+Parse spec modules [3/1229 rules]                            = 22.118 s
+
+Parsing finished: 57.204 s
+
+Initialization finished
+==================================
+Total time:            118.455
+  Parsing time:        57.204
+  Initialization time: 61.251
+  Execution time:      0.000
+
+Init+Execution time:    61.251
+  query build time:     0.128 s
+  Z3 Function rule implication time:  2.040 s
+    executed queries:     40
+      sat           :       39
+      unsat (proved):       1
+  resolveFunction time: 60.575 s
+Used memory:                   3570 MB
+
+resolveFunction top-level uncached: 272
+resolveFunction top-level cached:   112564
+resolveFunction recursive uncached: 299858
+
+impliesSMT time:    2.183 s
+impliesSMT count: 40
+==================================
+
+#True
+
+SPEC PROVED: /Users/denisadiaconescu/rv/verified-smart-contracts/specs/gnosis-imap/checkSignatures-spec.k Location(11,5,152,26)
+==================================
+Execution paths: 1
+Longest path: 2902 steps
+Total time:            189.498
+  Parsing time:        57.204
+  Initialization time: 61.251
+  Execution time:      71.043
+
+Init+Execution time:    132.294
+  query build time:     1.936 s
+  Z3 Function rule implication time:  39.592 s
+    executed queries:     1093
+      sat           :       1091
+      unsat (proved):       2
+    cached queries:       9067
+  Z3 Spec rule constraint      time:  1.193 s
+    executed queries:     33
+      sat           :       33
+    timeouts:             5
+  resolveFunction time: 119.883 s
+Used memory:                   4029 MB
+
+resolveFunction top-level uncached: 19348
+resolveFunction top-level cached:   1977175
+resolveFunction recursive uncached: 322998
+
+impliesSMT time:    41.613 s
+impliesSMT count: 10160
+==================================
+
