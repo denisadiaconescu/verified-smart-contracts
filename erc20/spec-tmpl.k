@@ -75,7 +75,7 @@
             <storage>
               {STORAGE}
             </storage>
-            <origStorage> _ </origStorage>
+            <origStorage> {ORIGSTORAGE} </origStorage>
             <nonce> _ </nonce>
           </account>
        // ... // TODO: fix
