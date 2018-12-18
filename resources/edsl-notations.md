@@ -123,13 +123,15 @@ where `1003892871367861763272476045097431689001461395759728643661426852242313133
     syntax WordStack ::= #getIndexedArgs ( EventArgs ) [function]
  // -------------------------------------------------------------
     rule #getIndexedArgs(#indexed(E), ES) => #getValue(E) : #getIndexedArgs(ES)
-    rule #getIndexedArgs(_:TypedArg,  ES) =>                #getIndexedArgs(ES)
+    rule #getIndexedArgs(E:TypedArg,  ES) =>                #getIndexedArgs(ES)
+         requires #getStringLabel(E) =/=String "#indexed"
     rule #getIndexedArgs(.EventArgs)      => .WordStack
 
     syntax WordStack ::= #getEventData ( EventArgs ) [function]
  // -----------------------------------------------------------
     rule #getEventData(#indexed(_), ES) =>                #getEventData(ES)
     rule #getEventData(E:TypedArg,  ES) => #getData(E) ++ #getEventData(ES)
+         requires #getStringLabel(E) =/=String "#indexed"
     rule #getEventData(.EventArgs)      => .WordStack
 
     syntax Int ::= #getValue ( TypedArg ) [function]
